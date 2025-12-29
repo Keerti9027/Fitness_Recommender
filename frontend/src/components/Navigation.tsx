@@ -35,8 +35,7 @@ export default function Navigation() {
             
             <div className="hidden md:flex space-x-4">
               <Link to="/workout-plans" className="flex items-center space-x-1 text-gray-700 hover:text-indigo-600">
-                <ChartLine className="h-5 w-5" />
-                <span>Workouts</span>
+                <span>💪 Workouts</span>
               </Link>
               <Link to="/diet-tracking" className="flex items-center space-x-1 text-gray-700 hover:text-indigo-600">
                 <Apple className="h-5 w-5" />

@@ -244,4 +244,99 @@ export const chatAPI = {
   getAllUsers: () => {
     return JSON.parse(localStorage.getItem('fitness_tracker_user_profiles') || '[]');
   },
+};
+
+// Food Nutrition API using Edamam Food Database
+export interface FoodNutrition {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
+
+export const foodAPI = {
+  // Get nutrition data for a food item
+  // Using Edamam Food Database API (free tier available)
+  // You can get API keys from: https://developer.edamam.com/food-database-api
+  // Note: This function only returns nutrition data, it preserves the user's food name
+  searchFood: async (foodName: string): Promise<FoodNutrition | null> => {
+    try {
+      // Using a public demo API key - replace with your own from Edamam
+      // For production, store these in environment variables
+      const APP_ID = import.meta.env.VITE_EDAMAM_APP_ID || 'demo_app_id';
+      const APP_KEY = import.meta.env.VITE_EDAMAM_APP_KEY || 'demo_app_key';
+      
+      // If using demo keys, use a fallback API (Nutritionix or USDA)
+      if (APP_ID === 'demo_app_id' || APP_KEY === 'demo_app_key') {
+        return foodAPI.searchFoodFallback(foodName);
+      }
+
+      const response = await fetch(
+        `https://api.edamam.com/api/food-database/v2/parser?ingr=${encodeURIComponent(foodName)}&app_id=${APP_ID}&app_key=${APP_KEY}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Food API request failed');
+      }
+
+      const data = await response.json();
+      
+      if (data.hints && data.hints.length > 0) {
+        const food = data.hints[0].food;
+        const nutrients = food.nutrients;
+        
+        // Only return nutrition data, preserve user's food name
+        return {
+          calories: Math.round(nutrients.ENERC_KCAL || 0),
+          protein: Math.round((nutrients.PROCNT || 0) * 10) / 10, // Round to 1 decimal
+          carbs: Math.round((nutrients.CHOCDF || 0) * 10) / 10,
+          fats: Math.round((nutrients.FAT || 0) * 10) / 10,
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching food nutrition:', error);
+      // Fallback to alternative API
+      return foodAPI.searchFoodFallback(foodName);
+    }
+  },
+
+  // Fallback API using USDA FoodData Central (free, no API key needed)
+  searchFoodFallback: async (foodName: string): Promise<FoodNutrition | null> => {
+    try {
+      const response = await fetch(
+        `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY&query=${encodeURIComponent(foodName)}&pageSize=1`
+      );
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      
+      if (data.foods && data.foods.length > 0) {
+        const food = data.foods[0];
+        const nutrients = food.foodNutrients || [];
+        
+        const getNutrient = (nutrientId: number) => {
+          const nutrient = nutrients.find((n: any) => n.nutrientId === nutrientId);
+          return nutrient ? nutrient.value : 0;
+        };
+
+        // Only return nutrition data, preserve user's food name
+        return {
+          calories: Math.round(getNutrient(1008) || 0), // Energy (kcal)
+          protein: Math.round((getNutrient(1003) || 0) * 10) / 10, // Protein
+          carbs: Math.round((getNutrient(1005) || 0) * 10) / 10, // Carbohydrate
+          fats: Math.round((getNutrient(1004) || 0) * 10) / 10, // Total lipid (fat)
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching food nutrition from fallback API:', error);
+      return null;
+    }
+  },
 }; 
