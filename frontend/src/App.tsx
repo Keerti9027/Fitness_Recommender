@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './components/NotificationSystem';
 import Navigation from './components/Navigation';
 import Dashboard from './pages/Dashboard';
 import WorkoutPlans from './pages/WorkoutPlans';
@@ -10,14 +11,16 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Social from './pages/Social';
+import VirtualDoctor from './pages/VirtualDoctor';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Navigation />
+        <NotificationProvider>
+          <div className="min-h-screen bg-gray-50">
+            <Navigation />
           <div className="container mx-auto px-4 py-8">
             <Routes>
               <Route path="/login" element={<Login />} />
@@ -29,10 +32,12 @@ function App() {
                 <Route path="/progress" element={<Progress />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/social" element={<Social />} />
+                <Route path="/virtual-doctor" element={<VirtualDoctor />} />
               </Route>
             </Routes>
           </div>
         </div>
+        </NotificationProvider>
       </AuthProvider>
     </Router>
   );

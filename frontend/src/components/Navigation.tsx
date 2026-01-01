@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { profileAPI } from '../lib/api';
-import { Activity, LineChart as ChartLine, Apple, Users, User } from 'lucide-react';
+import { NotificationBell } from './NotificationSystem';
+import { Activity, LineChart as ChartLine, Apple, Users, User, Stethoscope } from 'lucide-react';
 
 export default function Navigation() {
   const { user, signOut } = useAuth();
@@ -49,10 +50,15 @@ export default function Navigation() {
                 <Users className="h-5 w-5" />
                 <span>Social</span>
               </Link>
+              <Link to="/virtual-doctor" className="flex items-center space-x-1 text-gray-700 hover:text-indigo-600">
+                <Stethoscope className="h-5 w-5" />
+                <span>Doctor</span>
+              </Link>
             </div>
           </div>
 
           <div className="flex items-center space-x-4">
+            <NotificationBell />
             <Link to="/profile" className="flex items-center space-x-1 text-gray-700 hover:text-indigo-600">
               <User className="h-5 w-5" />
               <span>{userProfile?.fullName || userProfile?.username || user.email}</span>

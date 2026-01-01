@@ -11,6 +11,7 @@ export interface UserProfile {
   height?: number;
   weight?: number;
   goal?: string;
+  activityLevel?: string; // e.g., 'sedentary', 'moderate', 'active', 'very active'
   profilePhoto?: string;
   galleryImages?: string[];
 }

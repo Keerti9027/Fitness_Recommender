@@ -272,7 +272,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { storage, WorkoutPlan, WorkoutExercise } from '../lib/localStorage';
-import { Dumbbell, Calendar, Clock, Plus, ChevronRight, X, Trash2 } from 'lucide-react';
+import { profileAPI } from '../lib/api';
+import { getPersonalizedRecommendations, WorkoutPlanRecommendation } from '../lib/exerciseRecommendations';
+import { Dumbbell, Calendar, Clock, Plus, ChevronRight, X, Trash2, Sparkles } from 'lucide-react';
 import Modal from '../components/Modal';
 
 export default function WorkoutPlans() {
@@ -297,11 +299,18 @@ export default function WorkoutPlans() {
   const [planSuggestions, setPlanSuggestions] = useState<string[]>([]);
   const [showExerciseSuggestions, setShowExerciseSuggestions] = useState(false);
   const [exerciseSuggestions, setExerciseSuggestions] = useState<string[]>([]);
+  const [recommendations, setRecommendations] = useState<WorkoutPlanRecommendation[]>([]);
+  const [showRecommendations, setShowRecommendations] = useState(true);
 
   useEffect(() => {
     if (user) {
       const userPlans = storage.getWorkoutPlans(user.id);
       setWorkoutPlans(userPlans);
+      
+      // Get personalized recommendations
+      const profile = profileAPI.get(user.id);
+      const recs = getPersonalizedRecommendations(profile);
+      setRecommendations(recs);
     }
   }, [user]);
 
@@ -478,6 +487,25 @@ export default function WorkoutPlans() {
     setShowAddModal(false);
   };
 
+  const applyRecommendation = (recommendation: WorkoutPlanRecommendation) => {
+    const exercises: WorkoutExercise[] = recommendation.exercises.map((ex, index) => ({
+      id: crypto.randomUUID(),
+      name: ex.name,
+      sets: ex.sets,
+      reps: ex.reps,
+      weight: ex.weight,
+      orderPosition: index
+    }));
+
+    setNewPlan({
+      name: recommendation.name,
+      description: recommendation.description,
+      exercises: exercises
+    });
+    setShowRecommendations(false);
+    setShowAddModal(true);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
@@ -490,6 +518,70 @@ export default function WorkoutPlans() {
           <span>New Plan</span>
         </button>
       </div>
+
+      {/* Personalized Recommendations */}
+      {showRecommendations && recommendations.length > 0 && (
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl shadow-lg p-6 mb-8 text-white">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <Sparkles className="w-6 h-6" />
+              <h2 className="text-2xl font-bold">Personalized Recommendations</h2>
+            </div>
+            <button
+              onClick={() => setShowRecommendations(false)}
+              className="text-white hover:text-gray-200"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <p className="text-indigo-100 mb-4">
+            Based on your profile, goals, and activity level, here are personalized workout recommendations:
+          </p>
+          <div className="space-y-4">
+            {recommendations.map((rec, index) => (
+              <div key={index} className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-semibold">{rec.name}</h3>
+                  <button
+                    onClick={() => applyRecommendation(rec)}
+                    className="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors text-sm font-medium"
+                  >
+                    Use This Plan
+                  </button>
+                </div>
+                <p className="text-indigo-100 mb-3">{rec.description}</p>
+                <div className="flex items-center space-x-4 text-sm text-indigo-100">
+                  <span className="flex items-center space-x-1">
+                    <Clock className="w-4 h-4" />
+                    <span>{rec.duration} min</span>
+                  </span>
+                  <span className="flex items-center space-x-1">
+                    <Calendar className="w-4 h-4" />
+                    <span>{rec.frequency}</span>
+                  </span>
+                  <span>{rec.exercises.length} exercises</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {rec.exercises.slice(0, 6).map((ex, exIndex) => (
+                    <div key={exIndex} className="bg-white/5 rounded-lg p-2 text-sm">
+                      <div className="font-medium">{ex.name}</div>
+                      <div className="text-xs text-indigo-200">
+                        {ex.sets} sets × {ex.reps} reps
+                        {ex.weight && ` @ ${ex.weight}kg`}
+                      </div>
+                    </div>
+                  ))}
+                  {rec.exercises.length > 6 && (
+                    <div className="bg-white/5 rounded-lg p-2 text-sm flex items-center justify-center text-indigo-200">
+                      +{rec.exercises.length - 6} more
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
         <div className="border-b">
@@ -593,19 +685,27 @@ export default function WorkoutPlans() {
                   setShowPlanSuggestions(allSuggestions.length > 0);
                 }
               }}
-              onBlur={() => {
-                setTimeout(() => setShowPlanSuggestions(false), 200);
+              onBlur={(e) => {
+                // Only hide suggestions if clicking outside the suggestions dropdown
+                const relatedTarget = e.relatedTarget as HTMLElement;
+                if (!relatedTarget || !relatedTarget.closest('.suggestions-dropdown')) {
+                  setTimeout(() => setShowPlanSuggestions(false), 200);
+                }
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Enter plan name"
             />
             {showPlanSuggestions && planSuggestions.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div className="suggestions-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {planSuggestions.map((suggestion, index) => (
                   <button
                     key={index}
                     type="button"
-                    onClick={() => selectPlanSuggestion(suggestion)}
+                    onMouseDown={(e) => {
+                      // Prevent blur event from firing
+                      e.preventDefault();
+                      selectPlanSuggestion(suggestion);
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none"
                   >
                     {suggestion}
@@ -667,19 +767,27 @@ export default function WorkoutPlans() {
                         setShowExerciseSuggestions(allSuggestions.length > 0);
                       }
                     }}
-                    onBlur={() => {
-                      setTimeout(() => setShowExerciseSuggestions(false), 200);
+                    onBlur={(e) => {
+                      // Only hide suggestions if clicking outside the suggestions dropdown
+                      const relatedTarget = e.relatedTarget as HTMLElement;
+                      if (!relatedTarget || !relatedTarget.closest('.suggestions-dropdown')) {
+                        setTimeout(() => setShowExerciseSuggestions(false), 200);
+                      }
                     }}
                     placeholder="Exercise name"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   {showExerciseSuggestions && exerciseSuggestions.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="suggestions-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {exerciseSuggestions.map((suggestion, index) => (
                         <button
                           key={index}
                           type="button"
-                          onClick={() => selectExerciseSuggestion(suggestion)}
+                          onMouseDown={(e) => {
+                            // Prevent blur event from firing
+                            e.preventDefault();
+                            selectExerciseSuggestion(suggestion);
+                          }}
                           className="w-full text-left px-4 py-2 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none"
                         >
                           {suggestion}

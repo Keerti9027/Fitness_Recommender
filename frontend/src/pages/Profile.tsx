@@ -11,6 +11,7 @@ interface ProfileFormData {
   height: string;
   weight: string;
   goal: string;
+  activityLevel: string;
   profilePhoto?: string;
 }
 
@@ -24,6 +25,7 @@ export default function Profile() {
     height: profile?.height?.toString() || '',
     weight: profile?.weight?.toString() || '',
     goal: profile?.goal || '',
+    activityLevel: profile?.activityLevel || 'moderate',
     profilePhoto: profile?.profilePhoto || ''
   });
   const [bloodPressure, setBloodPressure] = useState(0);
@@ -45,6 +47,7 @@ export default function Profile() {
         height: userProfile?.height?.toString() || '',
         weight: userProfile?.weight?.toString() || '',
         goal: userProfile?.goal || '',
+        activityLevel: userProfile?.activityLevel || 'moderate',
         profilePhoto: userProfile?.profilePhoto || ''
       });
     }
@@ -223,6 +226,21 @@ export default function Profile() {
                         <option value="muscle-gain">Muscle Gain</option>
                         <option value="maintenance">Maintenance</option>
                         <option value="endurance">Endurance</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-500 mb-1">Activity Level</label>
+                      <select
+                        name="activityLevel"
+                        value={formData.activityLevel}
+                        onChange={handleInputChange}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="sedentary">Sedentary (little to no exercise)</option>
+                        <option value="light">Light (exercise 1-3 days/week)</option>
+                        <option value="moderate">Moderate (exercise 3-5 days/week)</option>
+                        <option value="active">Active (exercise 6-7 days/week)</option>
+                        <option value="very-active">Very Active (intense exercise daily)</option>
                       </select>
                     </div>
                     <div className="mb-4">
