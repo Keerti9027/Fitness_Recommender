@@ -193,17 +193,43 @@ export const profileAPI = {
     return profiles.find((p: any) => p.id === userId)?.profile;
   },
 
-  save: (userId: string, profile: any) => {
+  save: (userId: string, profile: any, email?: string) => {
     const profiles = JSON.parse(localStorage.getItem('fitness_tracker_user_profiles') || '[]');
     const index = profiles.findIndex((p: any) => p.id === userId);
     
     if (index >= 0) {
       profiles[index].profile = profile;
+      if (email) {
+        profiles[index].email = email;
+      }
     } else {
-      profiles.push({ id: userId, email: '', profile });
+      profiles.push({ id: userId, email: email || '', profile });
     }
     
     localStorage.setItem('fitness_tracker_user_profiles', JSON.stringify(profiles));
+  },
+
+  // Ensure user exists in profiles (for login/registration)
+  ensureUser: (userId: string, email: string) => {
+    const profiles = JSON.parse(localStorage.getItem('fitness_tracker_user_profiles') || '[]');
+    const index = profiles.findIndex((p: any) => p.id === userId);
+    
+    if (index < 0) {
+      // User doesn't exist, create entry
+      profiles.push({ 
+        id: userId, 
+        email: email, 
+        profile: {
+          username: email.split('@')[0],
+          fullName: email.split('@')[0]
+        }
+      });
+      localStorage.setItem('fitness_tracker_user_profiles', JSON.stringify(profiles));
+    } else if (!profiles[index].email) {
+      // User exists but email is missing, update it
+      profiles[index].email = email;
+      localStorage.setItem('fitness_tracker_user_profiles', JSON.stringify(profiles));
+    }
   },
 };
 
@@ -246,7 +272,9 @@ export const chatAPI = {
   },
 };
 
-// Food Nutrition API using Edamam Food Database
+// Food Nutrition API using Local Database and Edamam Food Database
+import { searchLocalFoodDatabase } from './foodDatabase';
+
 export interface FoodNutrition {
   calories: number;
   protein: number;
@@ -256,17 +284,29 @@ export interface FoodNutrition {
 
 export const foodAPI = {
   // Get nutrition data for a food item
-  // Using Edamam Food Database API (free tier available)
-  // You can get API keys from: https://developer.edamam.com/food-database-api
+  // First checks local database (Indian foods, snacks, fruits, common foods)
+  // Then falls back to Edamam Food Database API if not found locally
   // Note: This function only returns nutrition data, it preserves the user's food name
   searchFood: async (foodName: string): Promise<FoodNutrition | null> => {
+    // First, try local database (fast and reliable for Indian foods)
+    const localFood = searchLocalFoodDatabase(foodName);
+    if (localFood) {
+      return {
+        calories: localFood.calories,
+        protein: localFood.protein,
+        carbs: localFood.carbs,
+        fats: localFood.fats,
+      };
+    }
+
+    // If not found locally, try external APIs
     try {
       // Using a public demo API key - replace with your own from Edamam
       // For production, store these in environment variables
       const APP_ID = import.meta.env.VITE_EDAMAM_APP_ID || 'demo_app_id';
       const APP_KEY = import.meta.env.VITE_EDAMAM_APP_KEY || 'demo_app_key';
       
-      // If using demo keys, use a fallback API (Nutritionix or USDA)
+      // If using demo keys, use a fallback API (USDA)
       if (APP_ID === 'demo_app_id' || APP_KEY === 'demo_app_key') {
         return foodAPI.searchFoodFallback(foodName);
       }

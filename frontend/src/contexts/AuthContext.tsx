@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { authAPI } from '../lib/api';
+import { authAPI, profileAPI } from '../lib/api';
 
 interface User {
   id: string;
@@ -51,6 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: email,
         };
         
+        // Ensure user exists in profiles (for chat/social features)
+        profileAPI.ensureUser(userInfo.id, email);
+        
         setUser(userInfo);
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userInfo));
         return userInfo;
@@ -72,6 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: email,
           username: username,
         };
+        
+        // Ensure user exists in profiles (for chat/social features)
+        profileAPI.ensureUser(userInfo.id, email);
         
         setUser(userInfo);
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userInfo));

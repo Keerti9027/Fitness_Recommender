@@ -33,7 +33,7 @@ export default function Register() {
         profileAPI.save(user.id, {
           fullName: fullName,
           username: email.split('@')[0], // Default username from email
-        });
+        }, email);
       }
       
       navigate('/');

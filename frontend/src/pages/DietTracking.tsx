@@ -363,6 +363,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { storage, DietLog } from '../lib/localStorage';
 import { foodAPI } from '../lib/api';
+import { getAllFoodNames } from '../lib/foodDatabase';
 import { Apple, Plus, PieChart, Coffee, Sun, Moon, Trash2, Loader2 } from 'lucide-react';
 import Modal from '../components/Modal';
 
@@ -394,17 +395,23 @@ export default function DietTracking() {
     }
   }, [user]);
 
-  // Get unique food names for suggestions
+  // Get food suggestions from both local database and previous entries
   const getFoodSuggestions = () => {
-    if (!user) return [];
-    const allLogs = storage.getDietLogs(user.id);
-    const uniqueFoodNames = Array.from(new Set(allLogs.map(log => log.foodName.toLowerCase().trim())))
-      .map(name => {
-        // Find the original case version
-        const original = allLogs.find(log => log.foodName.toLowerCase().trim() === name);
-        return original ? original.foodName : name;
+    const suggestions = new Set<string>();
+    
+    // Add all foods from local database (Indian foods, snacks, fruits, common foods)
+    const localFoodNames = getAllFoodNames();
+    localFoodNames.forEach(name => suggestions.add(name));
+    
+    // Add previously logged foods
+    if (user) {
+      const allLogs = storage.getDietLogs(user.id);
+      allLogs.forEach(log => {
+        suggestions.add(log.foodName);
       });
-    return uniqueFoodNames;
+    }
+    
+    return Array.from(suggestions).sort();
   };
 
   const handleFoodNameChange = (value: string) => {
@@ -744,20 +751,28 @@ export default function DietTracking() {
                   setShowSuggestions(allSuggestions.length > 0);
                 }
               }}
-              onBlur={() => {
-                // Delay hiding suggestions to allow click
-                setTimeout(() => setShowSuggestions(false), 200);
+              onBlur={(e) => {
+                // Only hide suggestions if clicking outside the suggestions dropdown
+                // Check if the related target is not within the suggestions dropdown
+                const relatedTarget = e.relatedTarget as HTMLElement;
+                if (!relatedTarget || !relatedTarget.closest('.suggestions-dropdown')) {
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
               placeholder="Enter food name (e.g., apple, chicken breast)"
             />
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div className="suggestions-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {suggestions.map((suggestion, index) => (
                   <button
                     key={index}
                     type="button"
-                    onClick={() => selectSuggestion(suggestion)}
+                    onMouseDown={(e) => {
+                      // Prevent blur event from firing
+                      e.preventDefault();
+                      selectSuggestion(suggestion);
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-green-50 focus:bg-green-50 focus:outline-none"
                   >
                     {suggestion}
